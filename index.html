@@ -181,7 +181,7 @@
                        updateValue(44 - ascii); 
                        break;
                     case "[" :
-                       const closing = code.indexOf("]");
+                       const closing = code.indexOf("]",i);
                        if (closing < 0) throw new Error(`Unclosed Body of Loop Character Position ${i}`);
                        loop(code.slice(i + 1,closing));
                        i = closing;
