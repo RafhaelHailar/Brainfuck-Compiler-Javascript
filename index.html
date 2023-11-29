@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <title>Brainfuck Compiler in JS</title>
+    <style type="text/css">
+        body {
+           display: flex;
+           justify-content: center;
+           align-items: center;
+           min-height: 100vh;
+           padding: 0;
+           margin: 0;
+        }
+
+        .title {
+            position: absolute;
+            top: 0;
+            margin-top: 4rem;
+            font-size: 5rem;
+            text-align: center;
+            width: 100%;
+        }
+
+        .container {
+           display: flex;
+           flex: 1;
+           min-height: 20rem;
+           gap: 3rem;
+           padding: 0 2rem;
+           flex-wrap: wrap;
+        }
+
+        .container > div{
+            display: flex;
+
+        }
+
+        .container > div:first-child {
+            flex-direction: column;
+            gap: .5rem;
+        }
+
+        .container > div:last-child {
+            justify-content: center;
+            border: 1px solid black;
+            flex: 1;
+            padding: 2rem 0;
+        }
+
+        .run-btn {
+            align-self: end; 
+        }
+
+        .run-btn button {
+            background: lightGreen;
+            color: white;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            padding: .5rem 2rem;
+        }
+
+        #result {
+            background: rgba(0,0,0,0.05);
+            max-width: 90%;
+            flex: 1;
+        }
+
+        textarea {
+            height: 100%;
+        }
+
+        #updates {
+            bottom: 0;
+            display: flex;
+            justify-content: space-between;
+            position: absolute;
+            width: 100%;
+        }
+
+        .notive {
+            border: 1px solid black;
+        }
+
+        .version {
+            align-self: flex-end;
+        }
+
+        .version div{
+            background: black;
+            color: white;
+            padding: .3rem 2rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="title">
+        BRAINFUCK in Javascript
+    </div>
+    <div class="container">
+        <div>
+            <textarea id="code" cols="80"></textarea> 
+            <div class="run-btn">
+                <button onclick="run()">RUN</button>
+            </div>
+        </div>
+        <div>
+            <div id="result">
+           </div>
+        </div>
+    </div>
+    
+    <div id="updates">
+        <div class="notice">
+            <div>What's new?</div>
+            <ul>
+                <li>Nothing</li>
+                <li>Just Started Making it</li>
+                <li>Starting No Design Yet</li>
+                <li>Might take me a while to get back on it</li>
+            </ul>
+        </div>
+        <div class="version">
+            <div>
+                version 0.1
+            </div>
+        </div>
+    </div>
+
+    <script type="text/javascript">
+        let memory = (new Array(300000)).fill(0);
+        let pointer = 0;
+        let result = "";
+        let version = "0.1"; //will add a way to allow changing of the version in the web,maybe next month december 2023;
+        
+
+        function movePointer(number) {
+            pointer += number; 
+        }
+
+        function updateValue(number) {
+            memory[pointer] += number;
+        }
+
+        function displayValue() {
+           result += String.fromCharCode(memory[pointer]); 
+        }
+
+        function loop(code) {
+           const maxRun = 5000;
+           while (memory[pointer] > 0) {
+               if (memory[pointer] > maxRun) {
+                   throw new Error("Max Run Exceeded!");
+                   break;
+               }
+               compile(code);
+           }
+        }
+
+        function compile(code) {
+           for (let i = 0;i < code.length;i++) {
+               const char = code[i];
+               i = interpreter(char,i);
+           }
+
+           function interpreter(char,i) {
+               const ascii = char.charCodeAt(0);
+               switch (char) {
+                    case ">" :
+                    case "<" :
+                       // "=" is 61, 60 is "<" and 62 ">" , so if the char is "<" it will be -1,
+                       // since 60 - 61, and if char is ">" it will be positive for the same reason.
+                       movePointer(ascii - 61);
+                       break;
+                    case "+" :
+                    case "-" :
+                       // the same logic above, 44 = ",", 43 = "+" and 45 = "-".
+                       updateValue(44 - ascii); 
+                       break;
+                    case "[" :
+                       const closing = code.indexOf("]");
+                       if (closing < 0) throw new Error(`Unclosed Body of Loop Character Position ${i}`);
+                       loop(code.slice(i + 1,closing));
+                       i = closing;
+                       break;
+                    case "." :
+                       displayValue();
+                       break;
+               }
+
+               return i;
+           }
+
+           return result;
+        }
+
+        function reset() {
+            result = "";
+            memory = memory.fill(0);
+        }
+
+        function run() {
+            const code = document.getElementById("code").value; 
+            let resultHTML = document.getElementById("result");
+
+            compile(code);
+            resultHTML.innerHTML = result; 
+
+            reset();
+        }
+
+        
+        function test(result,expect) {
+            let message = "Failed!"
+            if ( result === expect ) message = "Success!" ;
+            console.log(`%s Compared to %s`,result,expect);
+            console.log(message);
+            reset();
+            
+        }
+
+        test(compile("+++++++++++++++++++++++++++++++++."),"!");
+        test(compile("+++++++[>+++++<-]>."),"#");
+
+
+        window.addEventListener("DOMContentLoaded",function() {
+           getVersion();
+        });
+
+        async function getVersion() {
+            const request = await fetch("./updates.json");
+            const data = await request.json();
+
+           const noticeContainerHTML = document.querySelector(".notice ul");
+           const versionHTML = document.querySelector(".version");
+           
+           let updateHTMLs = ``;
+
+           let updates = data[version];
+           for (let i = 0;i < updates.length;i++) {
+               let update = updates[i];
+               let updateHTML = `<li>${update}</li>`;
+               updateHTMLs += updateHTML;
+           }
+
+           versionHTML.innerHTML = version;
+           noticeContainerHTML.innerHTML = updateHTMLs;
+        }
+   </script>
+</body>
+</html>
